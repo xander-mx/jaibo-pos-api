@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/jaibo_pos}
+    username: ${DB_USERNAME:jaibo_pos}
+    password: ${DB_PASSWORD:jaibo_pos_local}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+
+app:
+  bootstrap:
+    admin-password: ${LOCAL_ADMIN_PASSWORD:Admin123!}
+  security:
+    jwt:
+      secret: ${JWT_SECRET:local-only-jwt-secret-change-before-production-2026}
+
+logging:
+  level:
+    root: INFO
+    com.eljaibo.pos: DEBUG
