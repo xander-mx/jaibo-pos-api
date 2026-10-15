@@ -11,6 +11,11 @@ public interface SupplierRepository
         extends JpaRepository<Supplier, UUID> {
 
     List<Supplier>
+    findAllByBusinessIdOrderByNameAsc(
+            UUID businessId
+    );
+
+    List<Supplier>
     findAllByBusinessIdAndActiveTrueOrderByNameAsc(
             UUID businessId
     );
@@ -24,5 +29,11 @@ public interface SupplierRepository
     boolean existsByBusinessIdAndNameIgnoreCase(
             UUID businessId,
             String name
+    );
+
+    boolean existsByBusinessIdAndNameIgnoreCaseAndIdNot(
+            UUID businessId,
+            String name,
+            UUID id
     );
 }

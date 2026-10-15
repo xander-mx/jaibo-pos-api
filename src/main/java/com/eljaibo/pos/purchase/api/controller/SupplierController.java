@@ -1,6 +1,7 @@
 package com.eljaibo.pos.purchase.api.controller;
 
 import com.eljaibo.pos.purchase.api.request.CreateSupplierRequest;
+import com.eljaibo.pos.purchase.api.request.UpdateSupplierRequest;
 import com.eljaibo.pos.purchase.api.response.SupplierResponse;
 import com.eljaibo.pos.purchase.application.SupplierService;
 
@@ -35,29 +36,67 @@ public class SupplierController {
             @Valid @RequestBody CreateSupplierRequest request
     ) {
 
-        UUID businessId = UUID.fromString(
-                Objects.requireNonNull(
-                        jwt.getClaimAsString("business_id")
-                )
-        );
-
         return supplierService.create(
-                businessId,
+                businessId(jwt),
                 request
         );
     }
 
     @GetMapping
-    public List<SupplierResponse> findActive(
+    public List<SupplierResponse> findAll(
             @AuthenticationPrincipal Jwt jwt
     ) {
 
-        UUID businessId = UUID.fromString(
+        UUID businessId = businessId(jwt);
+
+        return supplierService.findAll(
+                businessId
+        );
+    }
+
+    @PutMapping("/{supplierId}")
+    public SupplierResponse update(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID supplierId,
+            @Valid @RequestBody UpdateSupplierRequest request
+    ) {
+
+        return supplierService.update(
+                businessId(jwt),
+                supplierId,
+                request
+        );
+    }
+
+    @PatchMapping("/{supplierId}/deactivate")
+    public SupplierResponse deactivate(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID supplierId
+    ) {
+
+        return supplierService.deactivate(
+                businessId(jwt),
+                supplierId
+        );
+    }
+
+    @PatchMapping("/{supplierId}/activate")
+    public SupplierResponse activate(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID supplierId
+    ) {
+
+        return supplierService.activate(
+                businessId(jwt),
+                supplierId
+        );
+    }
+
+    private UUID businessId(Jwt jwt) {
+        return UUID.fromString(
                 Objects.requireNonNull(
                         jwt.getClaimAsString("business_id")
                 )
         );
-
-        return supplierService.findActive(businessId);
     }
 }

@@ -3,6 +3,7 @@ package com.eljaibo.pos.purchase.application;
 import com.eljaibo.pos.business.domain.Business;
 import com.eljaibo.pos.business.persistence.BusinessRepository;
 import com.eljaibo.pos.purchase.api.request.CreateSupplierRequest;
+import com.eljaibo.pos.purchase.api.request.UpdateSupplierRequest;
 import com.eljaibo.pos.purchase.api.response.SupplierResponse;
 import com.eljaibo.pos.purchase.domain.Supplier;
 import com.eljaibo.pos.purchase.persistence.SupplierRepository;
@@ -92,16 +93,130 @@ public class SupplierService {
     }
 
     @Transactional(readOnly = true)
-    public List<SupplierResponse> findActive(
+    public List<SupplierResponse> findAll(
             UUID businessId
     ) {
 
         return supplierRepository
-                .findAllByBusinessIdAndActiveTrueOrderByNameAsc(
+                .findAllByBusinessIdOrderByNameAsc(
                         businessId
                 )
                 .stream()
                 .map(SupplierResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public SupplierResponse update(
+            UUID businessId,
+            UUID supplierId,
+            UpdateSupplierRequest request
+    ) {
+
+        Supplier supplier = findSupplier(
+                businessId,
+                supplierId
+        );
+
+        String name = request.name()
+                .trim()
+                .replaceAll("\\s+", " ");
+
+        if (supplierRepository
+                .existsByBusinessIdAndNameIgnoreCaseAndIdNot(
+                        businessId,
+                        name,
+                        supplierId
+                )) {
+
+            log.warn(
+                    "Duplicate supplier update. businessId={}, supplierId={}, name={}",
+                    businessId,
+                    supplierId,
+                    name
+            );
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "El proveedor ya se encuentra registrado"
+            );
+        }
+
+        supplier.update(
+                name,
+                request.phone()
+        );
+
+        log.info(
+                "Supplier updated. supplierId={}, businessId={}",
+                supplierId,
+                businessId
+        );
+
+        return SupplierResponse.from(supplier);
+    }
+
+
+    @Transactional
+    public SupplierResponse deactivate(
+            UUID businessId,
+            UUID supplierId
+    ) {
+
+        Supplier supplier = findSupplier(
+                businessId,
+                supplierId
+        );
+
+        supplier.deactivate();
+
+        log.info(
+                "Supplier deactivated. supplierId={}, businessId={}",
+                supplierId,
+                businessId
+        );
+
+        return SupplierResponse.from(supplier);
+    }
+
+
+    @Transactional
+    public SupplierResponse activate(
+            UUID businessId,
+            UUID supplierId
+    ) {
+
+        Supplier supplier = findSupplier(
+                businessId,
+                supplierId
+        );
+
+        supplier.activate();
+
+        log.info(
+                "Supplier activated. supplierId={}, businessId={}",
+                supplierId,
+                businessId
+        );
+
+        return SupplierResponse.from(supplier);
+    }
+
+    private Supplier findSupplier(
+            UUID businessId,
+            UUID supplierId
+    ) {
+
+        return supplierRepository
+                .findByIdAndBusinessId(
+                        supplierId,
+                        businessId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Proveedor no encontrado"
+                        )
+                );
     }
 }
