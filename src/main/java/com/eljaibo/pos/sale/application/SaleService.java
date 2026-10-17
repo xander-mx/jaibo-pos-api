@@ -22,6 +22,7 @@ import com.eljaibo.pos.sale.api.request.ChangeSaleItemQuantityRequest;
 import com.eljaibo.pos.sale.api.request.MoveSaleItemRequest;
 import com.eljaibo.pos.sale.api.request.OpenSaleRequest;
 import com.eljaibo.pos.sale.api.request.PaySaleRequest;
+import com.eljaibo.pos.sale.api.request.PaymentRequest;
 import com.eljaibo.pos.sale.api.request.SplitSaleItemRequest;
 import com.eljaibo.pos.sale.api.response.SaleDetailResponse;
 import com.eljaibo.pos.sale.api.response.SaleItemResponse;
@@ -1031,9 +1032,16 @@ public class SaleService {
                 sale.getTotal()
         );
 
+        if (sale.getTotal().signum() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La venta no puede ser negativa"
+            );
+        }
+
         BigDecimal paidTotal = request.payments()
                 .stream()
-                .map(payment -> payment.amount())
+                .map(PaymentRequest::amount)
                 .reduce(
                         BigDecimal.ZERO,
                         BigDecimal::add
@@ -1049,7 +1057,7 @@ public class SaleService {
             );
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Payment total must match sale total"
+                    "Los pagos deben coincidir con el total de la venta"
             );
         }
 

@@ -7,6 +7,7 @@ import com.eljaibo.pos.cash.api.CashSessionResponse;
 import com.eljaibo.pos.cash.api.CloseCashSessionRequest;
 import com.eljaibo.pos.cash.api.OpenCashSessionRequest;
 import com.eljaibo.pos.cash.api.ReopenCashSessionRequest;
+import com.eljaibo.pos.cash.domain.CashMovement;
 import com.eljaibo.pos.cash.domain.CashMovementDirection;
 import com.eljaibo.pos.cash.domain.CashMovementType;
 import com.eljaibo.pos.cash.domain.CashSession;
@@ -108,7 +109,7 @@ public class CashSessionService {
                 .ifPresent(existing -> {
                     throw new ResponseStatusException(
                             HttpStatus.CONFLICT,
-                            "A cash session is already open"
+                            "Ya existe una sesion de caja abierta"
                     );
                 });
 
@@ -280,8 +281,8 @@ public class CashSessionService {
         }
 
         cashSessionRepository
-                .findByOperatingCycleIdAndStatus(
-                        cashSession.getOperatingCycle().getId(),
+                .findByOperatingCycleBranchIdAndStatus(
+                        terminal.getBranch().getId(),
                         CashSessionStatus.OPEN
                 )
                 .ifPresent(openSession -> {
@@ -341,7 +342,7 @@ public class CashSessionService {
                                                 ),
                                         Collectors.reducing(
                                                 BigDecimal.ZERO,
-                                                movement -> movement.getAmount(),
+                                                CashMovement::getAmount,
                                                 BigDecimal::add
                                         )
                                 )
