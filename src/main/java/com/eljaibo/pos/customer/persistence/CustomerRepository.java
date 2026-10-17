@@ -15,14 +15,14 @@ public interface CustomerRepository
             UUID businessId
     );
 
-    List<Customer>
-    findAllByBusinessIdAndActiveTrueOrderByNameAsc(
-            UUID businessId
+    List<Customer> findAllByBusinessIdAndActiveOrderByNameAsc(
+            UUID businessId,
+            boolean active
     );
 
-    List<Customer>
-    findAllByBusinessIdAndActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(
+    List<Customer> findAllByBusinessIdAndActiveAndNameContainingIgnoreCaseOrderByNameAsc(
             UUID businessId,
+            boolean active,
             String name
     );
 }

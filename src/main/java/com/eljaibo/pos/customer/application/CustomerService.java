@@ -7,6 +7,8 @@ import com.eljaibo.pos.customer.api.CustomerResponse;
 import com.eljaibo.pos.customer.api.UpdateCustomerRequest;
 import com.eljaibo.pos.customer.domain.Customer;
 import com.eljaibo.pos.customer.persistence.CustomerRepository;
+import com.eljaibo.pos.sale.domain.ReceivableStatus;
+import com.eljaibo.pos.sale.persistence.ReceivableRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,13 +22,16 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final BusinessRepository businessRepository;
+    private final ReceivableRepository receivableRepository;
 
     public CustomerService(
             CustomerRepository customerRepository,
-            BusinessRepository businessRepository
+            BusinessRepository businessRepository,
+            ReceivableRepository receivableRepository
     ) {
         this.customerRepository = customerRepository;
         this.businessRepository = businessRepository;
+        this.receivableRepository = receivableRepository;
     }
 
     @Transactional
@@ -55,19 +60,22 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public List<CustomerResponse> findActive(
+    public List<CustomerResponse> findAll(
             UUID businessId,
-            String search
+            String search,
+            boolean active
     ) {
         List<Customer> customers =
                 search == null || search.isBlank()
                         ? customerRepository
-                        .findAllByBusinessIdAndActiveTrueOrderByNameAsc(
-                                businessId
+                        .findAllByBusinessIdAndActiveOrderByNameAsc(
+                                businessId,
+                                active
                         )
                         : customerRepository
-                        .findAllByBusinessIdAndActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(
+                        .findAllByBusinessIdAndActiveAndNameContainingIgnoreCaseOrderByNameAsc(
                                 businessId,
+                                active,
                                 search.trim()
                         );
 
@@ -114,6 +122,49 @@ public class CustomerService {
         return toResponse(customer);
     }
 
+    @Transactional
+    public CustomerResponse deactivate(
+            UUID businessId,
+            UUID customerId
+    ) {
+        Customer customer = findCustomer(
+                businessId,
+                customerId
+        );
+
+        boolean hasOpenReceivables =
+                receivableRepository.existsByCustomerIdAndStatus(
+                        customerId,
+                        ReceivableStatus.OPEN
+                );
+
+        if (hasOpenReceivables) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Customer has outstanding receivables"
+            );
+        }
+
+        customer.deactivate();
+
+        return toResponse(customer);
+    }
+
+    @Transactional
+    public CustomerResponse activate(
+            UUID businessId,
+            UUID customerId
+    ) {
+        Customer customer = findCustomer(
+                businessId,
+                customerId
+        );
+
+        customer.activate();
+
+        return toResponse(customer);
+    }
+
     private CustomerResponse toResponse(Customer customer) {
         return new CustomerResponse(
                 customer.getId(),
@@ -125,5 +176,22 @@ public class CustomerService {
                 customer.isCreditEnabled(),
                 customer.isActive()
         );
+    }
+
+    private Customer findCustomer(
+            UUID businessId,
+            UUID customerId
+    ) {
+        return customerRepository
+                .findByIdAndBusinessId(
+                        customerId,
+                        businessId
+                )
+                .orElseThrow(
+                        () -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Customer not found"
+                        )
+                );
     }
 }

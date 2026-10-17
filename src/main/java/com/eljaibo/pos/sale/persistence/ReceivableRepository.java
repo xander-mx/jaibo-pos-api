@@ -35,4 +35,9 @@ public interface ReceivableRepository
             UUID customerId,
             ReceivableStatus status
     );
+
+    boolean existsByCustomerIdAndStatus(
+            UUID customerId,
+            ReceivableStatus status
+    );
 }

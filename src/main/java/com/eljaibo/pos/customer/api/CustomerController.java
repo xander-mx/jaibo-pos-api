@@ -42,14 +42,24 @@ public class CustomerController {
     }
 
     @GetMapping
-    public List<CustomerResponse> findActive(
+    public List<CustomerResponse> findAll(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false, name = "q")
-            String search
+            String search,
+            @RequestParam(
+                    required = false,
+                    defaultValue = "true"
+            )
+            boolean active
     ) {
-        return customerService.findActive(
-                UUID.fromString(Objects.requireNonNull(jwt.getClaimAsString("business_id"))),
-                search
+        return customerService.findAll(
+                UUID.fromString(
+                        Objects.requireNonNull(
+                                jwt.getClaimAsString("business_id")
+                        )
+                ),
+                search,
+                active
         );
     }
 
@@ -69,6 +79,36 @@ public class CustomerController {
                 ),
                 customerId,
                 request
+        );
+    }
+
+    @PatchMapping("/{customerId}/deactivate")
+    public CustomerResponse deactivate(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID customerId
+    ) {
+        return customerService.deactivate(
+                UUID.fromString(
+                        Objects.requireNonNull(
+                                jwt.getClaimAsString("business_id")
+                        )
+                ),
+                customerId
+        );
+    }
+
+    @PatchMapping("/{customerId}/activate")
+    public CustomerResponse activate(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID customerId
+    ) {
+        return customerService.activate(
+                UUID.fromString(
+                        Objects.requireNonNull(
+                                jwt.getClaimAsString("business_id")
+                        )
+                ),
+                customerId
         );
     }
 }
