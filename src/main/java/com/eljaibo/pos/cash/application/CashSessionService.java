@@ -26,6 +26,8 @@ import com.eljaibo.pos.terminal.persistence.TerminalRepository;
 import com.eljaibo.pos.user.domain.AppUser;
 import com.eljaibo.pos.user.domain.UserRole;
 import com.eljaibo.pos.user.persistence.AppUserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class CashSessionService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(CashSessionService.class);
 
     private final CashSessionRepository cashSessionRepository;
     private final CashSessionEventRepository eventRepository;
@@ -119,6 +124,7 @@ public class CashSessionService {
                         businessDate
                 )
                 .ifPresent(existing -> {
+                    log.error("The cash session for this date was already closed");
                     throw new ResponseStatusException(
                             HttpStatus.CONFLICT,
                             "The cash session for this date was already closed"
@@ -277,6 +283,23 @@ public class CashSessionService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "A cash session from a closed cycle cannot be reopened"
+            );
+        }
+
+        CashSession latestSession = cashSessionRepository
+                .findFirstByOperatingCycleBranchIdAndOperatingCycleStatusOrderByBusinessDateDescOpenedAtDesc(
+                        terminal.getBranch().getId(),
+                        OperatingCycleStatus.OPEN
+                )
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "No se encontro una sesón de caja abierta para el ciclo actual"
+                ));
+
+        if (!latestSession.getId().equals(cashSession.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Solo la última sesión de caja puede ser reabierta"
             );
         }
 

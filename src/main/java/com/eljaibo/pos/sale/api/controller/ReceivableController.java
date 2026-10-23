@@ -1,5 +1,6 @@
 package com.eljaibo.pos.sale.api.controller;
 
+import com.eljaibo.pos.sale.api.response.ReceivableDetailResponse;
 import com.eljaibo.pos.sale.api.response.ReceivableResponse;
 import com.eljaibo.pos.sale.application.ReceivableService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -58,6 +59,25 @@ public class ReceivableController {
                         )
                 ),
                 customerId
+        );
+    }
+
+    @GetMapping("/{receivableId}")
+    public ReceivableDetailResponse findById(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID customerId,
+            @PathVariable UUID receivableId
+    ) {
+        return service.findById(
+                UUID.fromString(
+                        Objects.requireNonNull(
+                                jwt.getClaimAsString(
+                                        "business_id"
+                                )
+                        )
+                ),
+                customerId,
+                receivableId
         );
     }
 }

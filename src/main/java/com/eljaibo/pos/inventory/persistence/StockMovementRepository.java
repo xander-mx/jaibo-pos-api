@@ -7,4 +7,6 @@ import java.util.UUID;
 
 public interface StockMovementRepository
         extends JpaRepository<StockMovement, UUID> {
+
+    boolean existsByStockProductId(UUID productId);
 }

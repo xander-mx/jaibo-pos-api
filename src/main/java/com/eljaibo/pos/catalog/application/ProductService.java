@@ -5,6 +5,7 @@ import com.eljaibo.pos.business.persistence.BusinessRepository;
 import com.eljaibo.pos.catalog.api.CreateProductRequest;
 import com.eljaibo.pos.catalog.api.ProductResponse;
 import com.eljaibo.pos.catalog.api.UnitResponse;
+import com.eljaibo.pos.catalog.api.UpdateProductRequest;
 import com.eljaibo.pos.catalog.domain.Category;
 import com.eljaibo.pos.catalog.domain.InventoryMode;
 import com.eljaibo.pos.catalog.domain.Product;
@@ -12,12 +13,14 @@ import com.eljaibo.pos.catalog.domain.Unit;
 import com.eljaibo.pos.catalog.persistence.CategoryRepository;
 import com.eljaibo.pos.catalog.persistence.ProductRepository;
 import com.eljaibo.pos.catalog.persistence.UnitRepository;
+import com.eljaibo.pos.inventory.persistence.StockMovementRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -27,17 +30,20 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final UnitRepository unitRepository;
     private final ProductRepository productRepository;
+    private final StockMovementRepository stockMovementRepository;
 
     public ProductService(
             BusinessRepository businessRepository,
             CategoryRepository categoryRepository,
             UnitRepository unitRepository,
-            ProductRepository productRepository
+            ProductRepository productRepository,
+            StockMovementRepository stockMovementRepository
     ) {
         this.businessRepository = businessRepository;
         this.categoryRepository = categoryRepository;
         this.unitRepository = unitRepository;
         this.productRepository = productRepository;
+        this.stockMovementRepository = stockMovementRepository;
     }
 
     @Transactional
@@ -89,21 +95,124 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductResponse> findActive(
             UUID businessId,
-            boolean sellableOnly
+            boolean sellableOnly,
+            boolean purchasableOnly
     ) {
-        List<Product> products = sellableOnly
-                ? productRepository
-                .findAllByBusinessIdAndSellableTrueAndActiveTrueOrderByCategoryDisplayOrderAscDisplayOrderAscNameAsc(
-                        businessId
-                )
-                : productRepository
-                .findAllByBusinessIdAndActiveTrueOrderByCategoryDisplayOrderAscDisplayOrderAscNameAsc(
-                        businessId
-                );
+        List<Product> products;
+
+        if (sellableOnly) {
+            products =
+                    productRepository
+                            .findAllByBusinessIdAndSellableTrueAndActiveTrueOrderByCategoryDisplayOrderAscDisplayOrderAscNameAsc(
+                                    businessId
+                            );
+        } else if (purchasableOnly) {
+            products =
+                    productRepository
+                            .findAllByBusinessIdAndPurchasableTrueAndActiveTrueOrderByCategoryDisplayOrderAscDisplayOrderAscNameAsc(
+                                    businessId
+                            );
+        } else {
+            products =
+                    productRepository
+                            .findAllByBusinessIdAndActiveTrueOrderByCategoryDisplayOrderAscDisplayOrderAscNameAsc(
+                                    businessId
+                            );
+        }
 
         return products.stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public ProductResponse update(
+            UUID businessId,
+            UUID productId,
+            UpdateProductRequest request
+    ) {
+        Product product = productRepository
+                .findByIdAndBusinessId(
+                        productId,
+                        businessId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Product not found"
+                        )
+                );
+
+        Category category = findCategory(
+                request.categoryId(),
+                businessId
+        );
+
+        Unit inventoryUnit = findInventoryUnit(
+                request.inventoryUnitId(),
+                request.inventoryMode()
+        );
+
+        int displayOrder =
+                request.displayOrder() == null
+                        ? 0
+                        : request.displayOrder();
+
+        if (productRepository
+                .existsByBusinessIdAndNameIgnoreCaseAndIdNot(
+                        businessId,
+                        request.name(),
+                        productId
+                )) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Ya existe un producto con este nombre"
+            );
+        }
+
+        product.changeGeneralInformation(
+                request.name(),
+                request.description(),
+                category,
+                displayOrder
+        );
+
+        UUID currentInventoryUnitId =
+                product.getInventoryUnit() == null
+                        ? null
+                        : product.getInventoryUnit().getId();
+
+        boolean inventoryConfigurationChanged =
+                product.getInventoryMode() != request.inventoryMode()
+                        || !Objects.equals(
+                        currentInventoryUnitId,
+                        request.inventoryUnitId()
+                );
+
+        if (inventoryConfigurationChanged
+                && stockMovementRepository.existsByStockProductId(productId)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "La configuracción de inventario no puede cambiar porque este producto tiene movimientos de inventario actuales"
+            );
+        }
+
+        product.configureInventory(
+                request.inventoryMode(),
+                inventoryUnit
+        );
+
+        product.configureUsage(
+                request.sellable(),
+                request.purchasable()
+        );
+
+        product.changeImage(
+                request.imageUrl()
+        );
+
+        return toResponse(product);
     }
 
     private Business findBusiness(UUID businessId) {

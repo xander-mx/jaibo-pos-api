@@ -124,6 +124,13 @@ public class Product extends AuditableEntity {
             Unit inventoryUnit
     ) {
         validateInventory(inventoryMode, inventoryUnit);
+
+        validateUsage(
+                sellable,
+                purchasable,
+                inventoryMode
+        );
+
         this.inventoryMode = inventoryMode;
         this.inventoryUnit = inventoryUnit;
     }
@@ -132,11 +139,11 @@ public class Product extends AuditableEntity {
             boolean sellable,
             boolean purchasable
     ) {
-        if (!sellable && !purchasable) {
-            throw new IllegalArgumentException(
-                    "Product must be sellable or purchasable"
-            );
-        }
+        validateUsage(
+                sellable,
+                purchasable,
+                inventoryMode
+        );
 
         this.sellable = sellable;
         this.purchasable = purchasable;
@@ -217,11 +224,11 @@ public class Product extends AuditableEntity {
         if (category == null) {
             throw new IllegalArgumentException("category is required");
         }
-        if (!sellable && !purchasable) {
-            throw new IllegalArgumentException(
-                    "Product must be sellable or purchasable"
-            );
-        }
+        validateUsage(
+                sellable,
+                purchasable,
+                inventoryMode
+        );
         if (displayOrder < 0) {
             throw new IllegalArgumentException(
                     "displayOrder cannot be negative"
@@ -261,5 +268,19 @@ public class Product extends AuditableEntity {
         return value == null || value.isBlank()
                 ? null
                 : value.trim();
+    }
+
+    private static void validateUsage(
+            boolean sellable,
+            boolean purchasable,
+            InventoryMode inventoryMode
+    ) {
+        if (!sellable
+                && !purchasable
+                && inventoryMode == InventoryMode.NOT_TRACKED) {
+            throw new IllegalArgumentException(
+                    "Product must be sellable, purchasable or inventory tracked"
+            );
+        }
     }
 }

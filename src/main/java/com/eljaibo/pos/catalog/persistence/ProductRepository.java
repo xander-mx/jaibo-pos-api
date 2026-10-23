@@ -29,4 +29,15 @@ public interface ProductRepository
     findAllByBusinessIdAndActiveTrueOrderByCategoryDisplayOrderAscDisplayOrderAscNameAsc(
             UUID businessId
     );
+
+    List<Product>
+    findAllByBusinessIdAndPurchasableTrueAndActiveTrueOrderByCategoryDisplayOrderAscDisplayOrderAscNameAsc(
+            UUID businessId
+    );
+
+    boolean existsByBusinessIdAndNameIgnoreCaseAndIdNot(
+            UUID businessId,
+            String name,
+            UUID id
+    );
 }

@@ -20,4 +20,5 @@ public interface StockRepository
     findAllByBranchIdOrderByProductNameAsc(
             UUID branchId
     );
+
 }

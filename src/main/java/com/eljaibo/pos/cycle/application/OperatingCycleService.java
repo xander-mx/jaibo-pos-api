@@ -7,6 +7,8 @@ import com.eljaibo.pos.cycle.domain.OperatingCycle;
 import com.eljaibo.pos.cycle.domain.OperatingCycleStatus;
 import com.eljaibo.pos.cycle.persistence.OperatingCycleRepository;
 import com.eljaibo.pos.user.domain.AppUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,9 @@ import java.util.Optional;
 
 @Service
 public class OperatingCycleService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(OperatingCycleService.class);
 
     private final OperatingCycleRepository operatingCycleRepository;
     private final CashSessionRepository cashSessionRepository;
@@ -132,7 +137,21 @@ public class OperatingCycleService {
             );
         }
 
+        log.info(
+                "Closing previous operating cycle. cycleId={}, branchId={}, startsOn={}, endsOn={}",
+                previousCycle.getId(),
+                branch.getId(),
+                previousCycle.getStartsOn(),
+                previousCycle.getEndsOn()
+        );
+
         previousCycle.close(currentUser);
+        operatingCycleRepository.flush();
+
+        log.info(
+                "Previous operating cycle closed. cycleId={}",
+                previousCycle.getId()
+        );
     }
 
     private LocalDate calculateStartsOn(LocalDate businessDate) {
